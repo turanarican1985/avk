@@ -1,0 +1,1 @@
+"""AVK domain applications package."""
