@@ -29,6 +29,114 @@ TERMINAL_VERIFICATION_CASE_STATUSES = {
     VerificationCaseStatus.APPROVED,
     VerificationCaseStatus.REJECTED,
 }
+AI_ROUTABLE_VERIFICATION_CASE_STATUSES = {
+    VerificationCaseStatus.SUBMITTED,
+}
+HUMAN_DECISION_ALLOWED_STATUSES = {
+    VerificationCaseStatus.HUMAN_REVIEW_PENDING,
+}
+SUPPORT_REUPLOAD_ALLOWED_STATUSES = {
+    VerificationCaseStatus.CORRECTION_REQUESTED,
+    VerificationCaseStatus.REJECTED,
+}
+
+
+class InvalidVerificationTransition(ValueError):
+    """Raised when a verification case is moved through an invalid transition."""
+
+
+def _raise_invalid_transition(message: str) -> None:
+    """Raise a consistent domain-level error for invalid verification moves."""
+
+    raise InvalidVerificationTransition(message)
+
+
+def _create_verification_documents(
+    *,
+    verification_case: InstitutionVerificationCase,
+    documents: list[dict],
+    uploaded_by=None,
+    upload_source: VerificationSubmissionSource | str,
+) -> list[InstitutionVerificationDocument]:
+    """Persist verification documents without applying transition logic."""
+
+    return [
+        InstitutionVerificationDocument.objects.create(
+            verification_case=verification_case,
+            document_type=document["document_type"],
+            file_reference=document["file_reference"],
+            original_filename=document["original_filename"],
+            upload_source=upload_source,
+            uploaded_by=uploaded_by,
+            metadata=document.get("metadata", {}),
+        )
+        for document in documents
+    ]
+
+
+def _ensure_case_can_accept_institution_portal_submission(
+    *, verification_case: InstitutionVerificationCase
+) -> None:
+    """Validate that a normal institution-portal submission is currently valid."""
+
+    if verification_case.status != VerificationCaseStatus.DRAFT:
+        _raise_invalid_transition(
+            "Institution-portal submission is only allowed from the draft state."
+        )
+
+
+def _ensure_case_can_accept_ai_routing(
+    *,
+    verification_case: InstitutionVerificationCase,
+) -> None:
+    """Validate that the current submission may be processed by AI."""
+
+    if verification_case.current_submission_ai_bypassed:
+        _raise_invalid_transition(
+            "AI routing is blocked because the current submission bypasses AI."
+        )
+    if (
+        verification_case.latest_submission_source
+        != VerificationSubmissionSource.INSTITUTION_PORTAL
+    ):
+        _raise_invalid_transition(
+            "AI routing is only allowed after an institution-portal submission."
+        )
+    if verification_case.status not in AI_ROUTABLE_VERIFICATION_CASE_STATUSES:
+        _raise_invalid_transition(
+            "AI routing is only allowed after a submitted institution-portal upload."
+        )
+
+
+def _ensure_case_can_accept_human_decision(
+    *, verification_case: InstitutionVerificationCase
+) -> None:
+    """Validate that human review may record a decision for the case."""
+
+    if verification_case.status in TERMINAL_VERIFICATION_CASE_STATUSES:
+        _raise_invalid_transition(
+            "Human decisions cannot be recorded from a terminal verification state."
+        )
+    if verification_case.status not in HUMAN_DECISION_ALLOWED_STATUSES:
+        _raise_invalid_transition(
+            "Human decisions are only allowed while the case is pending human review."
+        )
+
+
+def _ensure_case_can_accept_support_reupload(
+    *, verification_case: InstitutionVerificationCase
+) -> None:
+    """Validate that support-linked re-upload is allowed for the case."""
+
+    if not verification_case.support_reupload_allowed:
+        _raise_invalid_transition(
+            "This verification case is not eligible for support-linked re-upload."
+        )
+    if verification_case.status not in SUPPORT_REUPLOAD_ALLOWED_STATUSES:
+        _raise_invalid_transition(
+            "Support-linked re-upload is only allowed after rejection "
+            "or correction request."
+        )
 
 
 @transaction.atomic
@@ -74,24 +182,24 @@ def submit_verification_documents(
         VerificationSubmissionSource | str
     ) = VerificationSubmissionSource.INSTITUTION_PORTAL,
 ) -> list[InstitutionVerificationDocument]:
-    """Attach uploaded verification documents to a case."""
+    """Attach institution-portal verification documents to a case."""
 
-    created_documents = [
-        InstitutionVerificationDocument.objects.create(
-            verification_case=verification_case,
-            document_type=document["document_type"],
-            file_reference=document["file_reference"],
-            original_filename=document["original_filename"],
-            upload_source=upload_source,
-            uploaded_by=uploaded_by,
-            metadata=document.get("metadata", {}),
+    if upload_source != VerificationSubmissionSource.INSTITUTION_PORTAL:
+        _raise_invalid_transition(
+            "Support-linked re-upload must use the dedicated support re-upload service."
         )
-        for document in documents
-    ]
-    verification_case.latest_submission_source = upload_source
-    verification_case.current_submission_ai_bypassed = (
-        upload_source == VerificationSubmissionSource.SUPPORT_REUPLOAD
+    _ensure_case_can_accept_institution_portal_submission(
+        verification_case=verification_case
     )
+
+    created_documents = _create_verification_documents(
+        verification_case=verification_case,
+        documents=documents,
+        uploaded_by=uploaded_by,
+        upload_source=upload_source,
+    )
+    verification_case.latest_submission_source = upload_source
+    verification_case.current_submission_ai_bypassed = False
     verification_case.submitted_at = timezone.now()
     verification_case.status = VerificationCaseStatus.SUBMITTED
     verification_case.save(
@@ -133,6 +241,8 @@ def record_ai_screening_result(
 ) -> InstitutionAIScreeningResult:
     """Store AI screening output for a verification case."""
 
+    _ensure_case_can_accept_ai_routing(verification_case=verification_case)
+
     screening_result = InstitutionAIScreeningResult.objects.create(
         verification_case=verification_case,
         result_status=result_status,
@@ -162,6 +272,12 @@ def route_case_after_ai_screening(
     screening_result: InstitutionAIScreeningResult,
 ) -> InstitutionVerificationCase:
     """Route a case after AI screening while preserving human approval boundaries."""
+
+    _ensure_case_can_accept_ai_routing(verification_case=verification_case)
+    if screening_result.verification_case_id != verification_case.id:
+        _raise_invalid_transition(
+            "The AI screening result does not belong to this verification case."
+        )
 
     if (
         screening_result.result_status
@@ -207,6 +323,8 @@ def record_human_verification_decision(
     note: str = "",
 ) -> InstitutionVerificationDecision:
     """Record a human decision and update the current verification case status."""
+
+    _ensure_case_can_accept_human_decision(verification_case=verification_case)
 
     decision = InstitutionVerificationDecision.objects.create(
         verification_case=verification_case,
@@ -264,24 +382,25 @@ def create_support_linked_reupload_submission(
 ) -> list[InstitutionVerificationDocument]:
     """Submit a support-linked re-upload that bypasses AI and goes to human review."""
 
-    if not verification_case.support_reupload_allowed:
-        raise ValueError(
-            "This verification case is not eligible for support-linked re-upload."
-        )
+    _ensure_case_can_accept_support_reupload(verification_case=verification_case)
 
-    created_documents = submit_verification_documents(
+    created_documents = _create_verification_documents(
         verification_case=verification_case,
         documents=documents,
         uploaded_by=uploaded_by,
         upload_source=VerificationSubmissionSource.SUPPORT_REUPLOAD,
     )
     verification_case.status = VerificationCaseStatus.HUMAN_REVIEW_PENDING
+    verification_case.latest_submission_source = (
+        VerificationSubmissionSource.SUPPORT_REUPLOAD
+    )
     verification_case.current_submission_ai_bypassed = True
     verification_case.support_reupload_allowed = False
     verification_case.last_human_review_routed_at = timezone.now()
     verification_case.save(
         update_fields=[
             "status",
+            "latest_submission_source",
             "current_submission_ai_bypassed",
             "support_reupload_allowed",
             "last_human_review_routed_at",

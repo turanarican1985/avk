@@ -48,3 +48,4 @@ Those questions must not be collapsed together:
 - AI clean does not equal approved
 - AI rejection is only for very high-confidence cases
 - support-linked re-upload bypasses AI and returns to human review
+- human decisions are intentionally blocked unless the case is in a valid reviewable state

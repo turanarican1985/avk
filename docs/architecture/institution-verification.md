@@ -36,6 +36,12 @@ AI is modeled as a pre-screening step with explicit outcomes:
 
 The important rule is that AI does not grant final approval. A clean AI result still routes to human review. Only very high-confidence cases may be directly rejected at the AI layer.
 
+Phase 1 fix-up rules also make this operationally strict:
+
+- AI routing only runs after a normal institution-portal submission
+- AI routing is blocked once a submission is marked as AI-bypassed
+- AI never moves a case into `approved`
+
 ## Human Decisions
 
 Human reviewers record explicit decisions:
@@ -46,6 +52,8 @@ Human reviewers record explicit decisions:
 
 Those decisions are stored separately from AI results so the history remains inspectable and future audit requirements stay manageable.
 
+Human decisions are intentionally guarded by case state. In the current Phase 1 implementation they are only valid while the case is in `human_review_pending`. This prevents accidental finalization from draft, raw submitted, or already terminal states.
+
 ## Support-Linked Re-upload
 
 Support-linked re-upload exists for correction or polite rejection paths. In Phase 1 the support system itself is not built yet, but the verification domain already models the important rule:
@@ -55,3 +63,9 @@ Support-linked re-upload exists for correction or polite rejection paths. In Pha
 - the case routes directly to human review
 
 This keeps the future workflow unambiguous without prematurely building support tickets or queueing logic.
+
+The service layer now enforces this explicitly:
+
+- support-linked re-upload is only allowed when the case explicitly enables it
+- the re-upload moves directly to `human_review_pending`
+- AI routing on that submission is blocked afterward

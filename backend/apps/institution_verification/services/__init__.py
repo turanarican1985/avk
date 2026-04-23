@@ -2,6 +2,7 @@
 
 from .verification import (
     HIGH_CONFIDENCE_AI_REJECTION_THRESHOLD,
+    InvalidVerificationTransition,
     create_support_linked_reupload_submission,
     open_verification_case,
     record_ai_screening_result,
@@ -12,6 +13,7 @@ from .verification import (
 
 __all__ = [
     "HIGH_CONFIDENCE_AI_REJECTION_THRESHOLD",
+    "InvalidVerificationTransition",
     "create_support_linked_reupload_submission",
     "open_verification_case",
     "record_ai_screening_result",
