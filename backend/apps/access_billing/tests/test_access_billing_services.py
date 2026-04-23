@@ -21,6 +21,7 @@ from apps.access_billing.selectors import (
 )
 from apps.access_billing.services import (
     InvalidAccessStateTransition,
+    InvalidChargeScheduleTransition,
     InvalidCouponApplication,
     create_access_plan,
     create_coupon,
@@ -417,6 +418,363 @@ def test_failed_charge_attempt_moves_state_into_failure_recovery_direction(
     assert charge_schedule.status == ChargeScheduleStatus.CHARGE_FAILED
     assert access_state.current_state == InstitutionAccessStatus.PAYMENT_FAILED
     assert access_state.recovery_started_at is not None
+
+
+@pytest.mark.django_db
+def test_cannot_record_successful_charge_on_already_succeeded_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    record_successful_charge_attempt(
+        charge_schedule=charge_schedule,
+        captured_amount=Decimal("1000.00"),
+    )
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        record_successful_charge_attempt(
+            charge_schedule=charge_schedule,
+            captured_amount=Decimal("1000.00"),
+        )
+
+
+@pytest.mark.django_db
+def test_cannot_record_failed_charge_on_already_failed_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    record_failed_charge_attempt(
+        charge_schedule=charge_schedule,
+        failure_reason="Declined",
+    )
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        record_failed_charge_attempt(
+            charge_schedule=charge_schedule,
+            failure_reason="Declined again",
+        )
+
+
+@pytest.mark.django_db
+def test_cannot_record_charge_outcome_on_cancelled_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.CANCELLED
+    charge_schedule.save(update_fields=["status", "updated_at"])
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        record_successful_charge_attempt(
+            charge_schedule=charge_schedule,
+            captured_amount=Decimal("1000.00"),
+        )
+    with pytest.raises(InvalidChargeScheduleTransition):
+        record_failed_charge_attempt(
+            charge_schedule=charge_schedule,
+            failure_reason="Cancelled schedules cannot fail again.",
+        )
+
+
+@pytest.mark.django_db
+def test_cannot_mark_seven_day_reminder_on_failed_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.CHARGE_FAILED
+    charge_schedule.seven_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.save(
+        update_fields=["status", "seven_day_reminder_due_at", "updated_at"]
+    )
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_seven_day_reminder_due(charge_schedule=charge_schedule)
+
+
+@pytest.mark.django_db
+def test_cannot_mark_three_day_reminder_on_failed_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.CHARGE_FAILED
+    charge_schedule.three_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.save(
+        update_fields=["status", "three_day_reminder_due_at", "updated_at"]
+    )
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_three_day_reminder_due(charge_schedule=charge_schedule)
+
+
+@pytest.mark.django_db
+def test_cannot_mark_reminders_on_succeeded_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.CHARGE_SUCCEEDED
+    charge_schedule.seven_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.three_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.save(
+        update_fields=[
+            "status",
+            "seven_day_reminder_due_at",
+            "three_day_reminder_due_at",
+            "updated_at",
+        ]
+    )
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_seven_day_reminder_due(charge_schedule=charge_schedule)
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_three_day_reminder_due(charge_schedule=charge_schedule)
+
+
+@pytest.mark.django_db
+def test_cannot_start_access_again_from_already_active_state(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+
+    with pytest.raises(InvalidAccessStateTransition):
+        start_full_feature_access_period(
+            institution=approved_institution,
+            plan=one_month_plan,
+            payment_method_payload=payment_method_payload,
+        )
+
+
+@pytest.mark.django_db
+def test_cannot_start_access_again_from_already_paid_state(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    record_successful_charge_attempt(
+        charge_schedule=charge_schedule,
+        captured_amount=Decimal("1000.00"),
+    )
+
+    with pytest.raises(InvalidAccessStateTransition):
+        start_full_feature_access_period(
+            institution=approved_institution,
+            plan=one_month_plan,
+            payment_method_payload=payment_method_payload,
+        )
+
+
+@pytest.mark.django_db
+def test_allowed_charge_success_path_works_from_ready_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.READY
+    charge_schedule.save(update_fields=["status", "updated_at"])
+
+    attempt = record_successful_charge_attempt(
+        charge_schedule=charge_schedule,
+        captured_amount=Decimal("1000.00"),
+    )
+
+    charge_schedule.refresh_from_db()
+    assert attempt.outcome == "succeeded"
+    assert charge_schedule.status == ChargeScheduleStatus.CHARGE_SUCCEEDED
+
+
+@pytest.mark.django_db
+def test_allowed_charge_failure_path_works_from_charge_in_progress_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.CHARGE_IN_PROGRESS
+    charge_schedule.save(update_fields=["status", "updated_at"])
+
+    attempt = record_failed_charge_attempt(
+        charge_schedule=charge_schedule,
+        failure_reason="Gateway timed out.",
+    )
+
+    charge_schedule.refresh_from_db()
+    assert attempt.outcome == "failed"
+    assert charge_schedule.status == ChargeScheduleStatus.CHARGE_FAILED
+
+
+@pytest.mark.django_db
+def test_reminders_still_work_from_valid_ready_schedule(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    charge_schedule.status = ChargeScheduleStatus.READY
+    charge_schedule.seven_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.three_day_reminder_due_at = timezone.now() - timedelta(minutes=1)
+    charge_schedule.save(
+        update_fields=[
+            "status",
+            "seven_day_reminder_due_at",
+            "three_day_reminder_due_at",
+            "updated_at",
+        ]
+    )
+
+    mark_seven_day_reminder_due(charge_schedule=charge_schedule)
+    mark_three_day_reminder_due(charge_schedule=charge_schedule)
+
+    charge_schedule.refresh_from_db()
+    assert charge_schedule.seven_day_reminder_marked_at is not None
+    assert charge_schedule.three_day_reminder_marked_at is not None
+
+
+@pytest.mark.django_db
+def test_schedule_finalization_remains_one_way(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    record_successful_charge_attempt(
+        charge_schedule=charge_schedule,
+        captured_amount=Decimal("1000.00"),
+    )
+    charge_schedule.refresh_from_db()
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        record_failed_charge_attempt(
+            charge_schedule=charge_schedule,
+            failure_reason="Should not mutate finalized schedule.",
+        )
+
+
+@pytest.mark.django_db
+def test_reminder_transitions_do_not_mutate_already_finalized_schedules(
+    approved_institution,
+    one_month_plan,
+    payment_method_payload,
+):
+    start_full_feature_access_period(
+        institution=approved_institution,
+        plan=one_month_plan,
+        payment_method_payload=payment_method_payload,
+    )
+    charge_schedule = get_current_charge_schedule_for_institution(
+        institution=approved_institution
+    )
+    record_failed_charge_attempt(
+        charge_schedule=charge_schedule,
+        failure_reason="Declined",
+    )
+    charge_schedule.refresh_from_db()
+    original_status = charge_schedule.status
+    original_seven_day_marked_at = charge_schedule.seven_day_reminder_marked_at
+    original_three_day_marked_at = charge_schedule.three_day_reminder_marked_at
+
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_seven_day_reminder_due(charge_schedule=charge_schedule)
+    with pytest.raises(InvalidChargeScheduleTransition):
+        mark_three_day_reminder_due(charge_schedule=charge_schedule)
+
+    charge_schedule.refresh_from_db()
+    assert charge_schedule.status == original_status
+    assert charge_schedule.seven_day_reminder_marked_at == original_seven_day_marked_at
+    assert charge_schedule.three_day_reminder_marked_at == original_three_day_marked_at
 
 
 @pytest.mark.django_db

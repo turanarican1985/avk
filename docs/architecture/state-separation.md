@@ -26,6 +26,12 @@ Phase 2 models this separately from both legal verification and commercial-acces
 
 This means the system can represent "payment method captured", "charge scheduled", "charge failed", and "paid active" as different operational facts instead of flattening them into one status.
 
+The commercial-access services also guard those transitions intentionally:
+
+- reminders are only valid while the schedule remains in a pre-charge state
+- charge success or failure is only valid before the schedule is finalized
+- finalized schedules are one-way for the current cycle instead of being mutated repeatedly
+
 ## Content Moderation
 
 This state family answers where institution-authored content sits in the moderation process. It is independent from support tickets and independent from institution legal verification.

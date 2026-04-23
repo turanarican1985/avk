@@ -38,6 +38,21 @@ class InvalidAccessStateTransition(AccessBillingError):
     """Raised when commercial-access lifecycle transitions are invalid."""
 
 
+class InvalidChargeScheduleTransition(AccessBillingError):
+    """Raised when a charge schedule is moved through an invalid transition."""
+
+
+CHARGE_OUTCOME_ALLOWED_SCHEDULE_STATUSES = {
+    ChargeScheduleStatus.PENDING,
+    ChargeScheduleStatus.READY,
+    ChargeScheduleStatus.CHARGE_IN_PROGRESS,
+}
+REMINDER_ALLOWED_SCHEDULE_STATUSES = {
+    ChargeScheduleStatus.PENDING,
+    ChargeScheduleStatus.READY,
+}
+
+
 def quantize_money(amount: Decimal | str | float) -> Decimal:
     """Normalize currency values to a two-decimal representation."""
 
@@ -226,6 +241,35 @@ def create_first_charge_schedule(
     )
 
 
+def _ensure_access_state_can_start(*, access_state: InstitutionAccessState) -> None:
+    """Validate that the institution is in a valid pre-start access state."""
+
+    if access_state.current_state != InstitutionAccessStatus.ELIGIBLE_TO_START:
+        raise InvalidAccessStateTransition(
+            "Commercial access can only start from the eligible-to-start state."
+        )
+
+
+def _ensure_schedule_can_mark_reminder(*, charge_schedule: ChargeSchedule) -> None:
+    """Validate that reminder operations still make sense for the schedule."""
+
+    if charge_schedule.status not in REMINDER_ALLOWED_SCHEDULE_STATUSES:
+        raise InvalidChargeScheduleTransition(
+            "Reminders can only be marked while the charge schedule "
+            "is pending or ready."
+        )
+
+
+def _ensure_schedule_can_record_outcome(*, charge_schedule: ChargeSchedule) -> None:
+    """Validate that a charge outcome can still be recorded for the schedule."""
+
+    if charge_schedule.status not in CHARGE_OUTCOME_ALLOWED_SCHEDULE_STATUSES:
+        raise InvalidChargeScheduleTransition(
+            "Charge outcomes can only be recorded from pending, ready, "
+            "or charge-in-progress schedules."
+        )
+
+
 @transaction.atomic
 def start_full_feature_access_period(
     *,
@@ -238,10 +282,7 @@ def start_full_feature_access_period(
     """Start the one-month full-feature access period for an approved institution."""
 
     access_state = mark_institution_eligible_for_access_start(institution=institution)
-    if access_state.current_state != InstitutionAccessStatus.ELIGIBLE_TO_START:
-        raise InvalidAccessStateTransition(
-            "Commercial access can only start from the eligible-to-start state."
-        )
+    _ensure_access_state_can_start(access_state=access_state)
     if not plan.is_active:
         raise InvalidAccessStateTransition("Inactive plans cannot be selected.")
 
@@ -319,17 +360,11 @@ def _ensure_reminder_can_be_marked(
 ) -> None:
     """Validate reminder marking against the configured due boundaries."""
 
-    if charge_schedule.status in {
-        ChargeScheduleStatus.CHARGE_SUCCEEDED,
-        ChargeScheduleStatus.CANCELLED,
-    }:
-        raise InvalidAccessStateTransition(
-            "Reminders cannot be marked for completed or cancelled schedules."
-        )
+    _ensure_schedule_can_mark_reminder(charge_schedule=charge_schedule)
     if due_at is None or timezone.now() < due_at:
-        raise InvalidAccessStateTransition("This reminder is not due yet.")
+        raise InvalidChargeScheduleTransition("This reminder is not due yet.")
     if already_marked_at is not None:
-        raise InvalidAccessStateTransition("This reminder was already marked.")
+        raise InvalidChargeScheduleTransition("This reminder was already marked.")
 
 
 @transaction.atomic
@@ -409,6 +444,7 @@ def record_successful_charge_attempt(
 ) -> ChargeAttempt:
     """Record a successful charge attempt and move access into a paid-active state."""
 
+    _ensure_schedule_can_record_outcome(charge_schedule=charge_schedule)
     attempt = _create_charge_attempt(
         charge_schedule=charge_schedule,
         outcome=ChargeAttemptOutcome.SUCCEEDED,
@@ -445,6 +481,7 @@ def record_failed_charge_attempt(
 ) -> ChargeAttempt:
     """Record a failed charge attempt and move access into recovery-oriented state."""
 
+    _ensure_schedule_can_record_outcome(charge_schedule=charge_schedule)
     attempt = _create_charge_attempt(
         charge_schedule=charge_schedule,
         outcome=ChargeAttemptOutcome.FAILED,

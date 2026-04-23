@@ -3,6 +3,7 @@
 from .access import (
     AccessBillingError,
     InvalidAccessStateTransition,
+    InvalidChargeScheduleTransition,
     InvalidCouponApplication,
     capture_payment_method_reference,
     compute_discounted_amount,
@@ -21,6 +22,7 @@ from .access import (
 __all__ = [
     "AccessBillingError",
     "InvalidAccessStateTransition",
+    "InvalidChargeScheduleTransition",
     "InvalidCouponApplication",
     "capture_payment_method_reference",
     "compute_discounted_amount",

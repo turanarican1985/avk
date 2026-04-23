@@ -79,6 +79,25 @@ Scheduled charging is modeled separately from actual charge attempts.
 
 That separation keeps planning state and execution state distinct.
 
+Service guards intentionally keep those state families coherent:
+
+- reminder marking is valid only while a schedule is still pre-charge
+- charge success and failure can only be recorded from valid pre-finalization states
+- succeeded, failed, or cancelled schedules are treated as finalized for the current cycle
+- a new execution cycle requires a future explicit schedule or retry design, not repeated mutation of the same finalized record
+
+## Guarded Transitions
+
+Phase 2 keeps commercial-access writes in explicit services rather than implicit model mutations.
+
+That service layer blocks invalid moves such as:
+
+- starting access again after access is already active or paid
+- marking reminders on succeeded, failed, cancelled, or in-progress schedules
+- recording charge success or failure after a schedule has already been finalized
+
+The goal is not to build a generic workflow engine. The goal is to keep the early commercial-access domain predictable and auditable.
+
 ## Recovery Foundation
 
 Phase 2 does not implement full retry orchestration or provider integration, but it does introduce failure and recovery-oriented state transitions so later phases can build on clean domain boundaries.
