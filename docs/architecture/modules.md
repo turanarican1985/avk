@@ -39,6 +39,15 @@ In Phase 1 this module now owns:
 
 Commercial access concepts such as the 1-month full-feature access period, card capture timing, scheduled charging, plan periods, coupon application rules, billing recovery coordination, and subscription visibility state.
 
+In Phase 2 this module now owns:
+
+- access plans for 1, 3, 6, and 12 month periods
+- percentage-based coupons with explicit plan applicability
+- institution commercial-access state
+- payment-method references without raw card storage
+- scheduled future charges and reminder boundaries
+- charge attempt history and recovery-oriented transitions
+
 ## `institution_websites`
 
 Institution-controlled website configuration, template selection, section configuration, theming, slug publishing, graceful downgrade behavior, and later custom-domain support.

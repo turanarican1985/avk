@@ -37,6 +37,28 @@ def get_active_verification_case_for_institution(
     )
 
 
+def get_latest_verification_case_for_institution(
+    *, institution: Institution
+) -> InstitutionVerificationCase | None:
+    """Return the latest verification case for an institution."""
+
+    return (
+        InstitutionVerificationCase.objects.filter(institution=institution)
+        .order_by("-created_at")
+        .first()
+    )
+
+
+def institution_is_legally_approved(*, institution: Institution) -> bool:
+    """Return whether the institution's latest verification case is approved."""
+
+    latest_case = get_latest_verification_case_for_institution(institution=institution)
+    return (
+        latest_case is not None
+        and latest_case.status == VerificationCaseStatus.APPROVED
+    )
+
+
 def list_verification_cases_for_institution(
     *, institution: Institution
 ) -> QuerySet[InstitutionVerificationCase]:

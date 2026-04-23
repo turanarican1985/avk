@@ -2,7 +2,7 @@
 
 This directory contains the Django backend for AVK. The backend is structured as a modular monolith so that product domains can evolve independently without introducing premature service boundaries.
 
-## What Exists Through Phase 1
+## What Exists Through Phase 2
 
 - Django project configuration with environment-based settings
 - Django REST Framework baseline configuration
@@ -14,13 +14,14 @@ This directory contains the Django backend for AVK. The backend is structured as
 - custom email-based user model
 - institution and institution membership domain models
 - institution verification models, services, selectors, admin, and migrations
+- commercial-access plans, coupons, payment-method references, schedules, and charge attempts
 - thin internal scaffolding APIs for institution and verification case inspection
+- thin internal scaffolding APIs for access plans, access state, and charge schedules
 - pytest, Ruff, and Black configuration
 
 ## What Does Not Exist Yet
 
 - payment provider integrations
-- billing and commercial access workflows
 - institution website builder logic
 - content and moderation workflows
 - verified review workflows
@@ -47,6 +48,13 @@ The structure is intentionally repetitive. The goal is to make boundaries visibl
 - `institutions` models the shared institution entity for both solo and team-based organizations.
 - `institution_verification` keeps verification state separate from commercial access and uses AI only for routing, not final approval.
 - support-linked re-upload is modeled as a verification-domain boundary that bypasses AI and routes directly to human review.
+
+## Phase 2 Notes
+
+- `access_billing` introduces a separate commercial-access state family.
+- starting access is allowed only after legal approval and explicit institution action.
+- payment-method references store safe metadata only; raw card data is intentionally out of scope.
+- scheduled charging is modeled separately from actual charge attempts and failure/recovery outcomes.
 
 ## Local Commands
 

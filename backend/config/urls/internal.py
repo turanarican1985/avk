@@ -3,6 +3,7 @@
 from django.urls import include, path
 
 urlpatterns = [
+    path("", include("apps.access_billing.api.urls")),
     path("", include("apps.institutions.api.urls")),
     path("", include("apps.institution_verification.api.urls")),
 ]

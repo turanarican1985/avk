@@ -5,6 +5,7 @@ The documentation in this repository is intentionally educational. It explains n
 ## Architecture
 
 - [Overview](architecture/overview.md)
+- [Commercial Access](architecture/commercial-access.md)
 - [Planned Modules](architecture/modules.md)
 - [Institution Verification](architecture/institution-verification.md)
 - [State Separation](architecture/state-separation.md)

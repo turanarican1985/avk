@@ -2,7 +2,7 @@
 
 AVK is a production-oriented Turkish legal discovery and institution platform. The platform serves visitors who want to discover legal institutions and institutions that want to manage their visibility, verification, content, and commercial access from a shared product surface.
 
-This repository currently contains the Phase 0 foundation plus a bounded Phase 1 domain layer for accounts, institutions, and institution verification. The goal is to establish real core models and services without leaking into billing, websites, content, reviews, or the full support system too early.
+This repository currently contains the Phase 0 foundation, the Phase 1 accounts/institutions/verification layer, and a bounded Phase 2 commercial-access foundation. The goal is to establish real core models and services without leaking too early into provider integrations, websites, content, reviews, or the full support system.
 
 ## Stack Direction
 
@@ -21,7 +21,7 @@ This repository currently contains the Phase 0 foundation plus a bounded Phase 1
 
 ## Current Status
 
-The repository currently includes the Phase 0 foundation and the bounded Phase 1 institution and verification domain layer:
+The repository currently includes:
 
 - modular backend project scaffold
 - health and service-info API surface
@@ -29,6 +29,7 @@ The repository currently includes the Phase 0 foundation and the bounded Phase 1
 - custom user model
 - institution and institution membership domain models
 - institution verification domain models and services
+- commercial-access plans, coupons, payment-method references, schedules, and charge attempts
 - frontend placeholders
 - engineering documentation
 - linting, formatting, and test tooling
@@ -37,7 +38,6 @@ The repository currently includes the Phase 0 foundation and the bounded Phase 1
 Out of scope for the current repository state:
 
 - payment provider integration
-- billing/commercial access logic
 - institution website builder behavior
 - content and moderation workflows
 - verified review workflows

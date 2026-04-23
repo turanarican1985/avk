@@ -7,7 +7,7 @@ AVK is a Turkish legal discovery and institution platform. It brings two audienc
 - visitors who discover institutions, read profiles, read legal content, and submit verified reviews
 - institutions that manage verification, visibility, content, website presence, and commercial access
 
-The repository is intentionally organized as a modular monolith. Phase 0 established the boundaries and operational scaffolding. Phase 1 adds the first real domain layer for accounts, institutions, and institution verification while keeping billing, websites, content, reviews, and support workflows out of scope.
+The repository is intentionally organized as a modular monolith. Phase 0 established the boundaries and operational scaffolding. Phase 1 added the first real domain layer for accounts, institutions, and institution verification. Phase 2 adds the first commercial-access foundation in `access_billing` while still keeping payment-provider integration, websites, content, reviews, and the full support system out of scope.
 
 ## Why a Custom User Model Was Introduced Early
 
@@ -49,6 +49,21 @@ Examples:
 Keeping these concerns separate reduces accidental coupling and makes operational reasoning clearer for both developers and staff teams.
 
 Phase 1 applies this rule concretely by giving institution verification its own models, services, and state transitions. Verification cases do not contain subscription, charging, coupon, or access-period fields.
+
+Phase 2 applies the same rule in the opposite direction: commercial-access records may read legal approval state, but they do not mutate verification and they do not embed verification fields.
+
+## Why Commercial Access Is Separate From Verification
+
+Legal approval answers whether the institution passed institutional verification. Commercial access answers whether the institution has explicitly started the 1-month full-feature access period, selected a plan, captured a payment method reference, and reached later charging milestones.
+
+Those are different questions:
+
+- an approved institution may still be `eligible_to_start`
+- an active access period is not the same as a paid subscription
+- a scheduled charge is not the same as a successful charge
+- a captured payment method reference is not the same as a completed payment
+
+Phase 2 turns these distinctions into code through a dedicated access-state model, future charge schedules, and separate charge-attempt records.
 
 ## Why AI Routing Is Not Human Approval
 

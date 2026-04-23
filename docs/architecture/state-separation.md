@@ -12,9 +12,19 @@ Phase 1 models this explicitly through institution verification cases, AI screen
 
 This state family answers whether a legally approved institution has started the 1-month full-feature access period, whether a paid period is active, and whether premium entitlements are currently available.
 
+Phase 2 models this explicitly with a dedicated institution commercial-access state. This state family is not embedded into institution verification models.
+
 ## Card Capture and Charge Scheduling
 
 This state family answers whether payment details were captured, which plan period was selected, whether a charge is scheduled, and what reminder milestones exist before charging.
+
+Phase 2 models this separately from both legal verification and commercial-access outcome state:
+
+- payment-method reference capture is its own boundary
+- charge schedule state is its own boundary
+- charge attempt outcome is its own boundary
+
+This means the system can represent "payment method captured", "charge scheduled", "charge failed", and "paid active" as different operational facts instead of flattening them into one status.
 
 ## Content Moderation
 
