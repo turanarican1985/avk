@@ -10,6 +10,7 @@ This directory contains the Django backend bootstrap for AVK. The backend is str
 - modular app packages under `apps/`
 - minimal health and service-info API endpoints
 - audit, permission, and sensitive-access abstractions
+- automatic `.env` loading for local development
 - pytest, Ruff, and Black configuration
 
 ## What Does Not Exist Yet
@@ -45,3 +46,4 @@ ruff check .
 black --check .
 ```
 
+Copy `.env.example` to `.env` before running local commands. The settings package loads that file automatically so contributors do not need to export variables manually during Phase 0.

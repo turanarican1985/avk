@@ -17,3 +17,4 @@ def test_info_endpoint(client):
     assert payload["phase"] == "phase-0"
     assert payload["language_code"] == "tr-tr"
     assert payload["time_zone"] == "Europe/Istanbul"
+    assert payload["version"] == "0.1.0-phase0"

@@ -26,6 +26,8 @@ This document explains the intended local development flow for the AVK backend b
    python manage.py runserver
    ```
 
+The backend settings load `backend/.env` automatically via `python-dotenv`, so copying the example file is enough for the documented local bootstrap flow.
+
 ## Database Notes
 
 PostgreSQL is the intended primary database for real environments. Phase 0 allows SQLite in local development by default so contributors can boot the repository quickly before domain models exist.
@@ -35,6 +37,8 @@ When PostgreSQL-backed development becomes necessary, set `USE_SQLITE=false` and
 ## Background Jobs
 
 Celery and Redis are configured as placeholders. The bootstrap defines the configuration seam, but no real task workflows are implemented yet.
+
+`REDIS_URL` acts as the shared default Redis connection. `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` can override it when a future environment needs separate endpoints.
 
 Future local workflow will look like:
 
@@ -51,4 +55,3 @@ ruff check .
 black --check .
 pytest
 ```
-

@@ -29,6 +29,7 @@ The repository is intentionally limited to Phase 0:
 - frontend placeholders
 - engineering documentation
 - linting, formatting, and test tooling
+- automatic local `.env` loading and Phase 0 smoke tests
 
 Out of scope for this phase:
 
@@ -44,9 +45,9 @@ Out of scope for this phase:
 - Legal verification state, commercial access state, review verification state, content moderation state, support lifecycle state, and institution website state must remain separate.
 - User-facing product copy must be Turkish. Internal code, comments, docstrings, and engineering documentation remain English.
 - Business logic should live in explicit services and selectors, not inside views.
+- DRF defaults should be conservative, with public endpoints opting into openness explicitly.
 - Critical transitions should be designed with auditability in mind from the beginning.
 
 ## Documentation
 
 Start with [docs/README.md](docs/README.md). The architecture documents explain the modular boundary plan, the state-separation rules, and the development workflow expected for future phases.
-
