@@ -1,8 +1,8 @@
 # Backend Bootstrap
 
-This directory contains the Django backend bootstrap for AVK. The backend is structured as a modular monolith so that product domains can evolve independently without introducing premature service boundaries.
+This directory contains the Django backend for AVK. The backend is structured as a modular monolith so that product domains can evolve independently without introducing premature service boundaries.
 
-## What Exists in Phase 0
+## What Exists Through Phase 1
 
 - Django project configuration with environment-based settings
 - Django REST Framework baseline configuration
@@ -11,15 +11,21 @@ This directory contains the Django backend bootstrap for AVK. The backend is str
 - minimal health and service-info API endpoints
 - audit, permission, and sensitive-access abstractions
 - automatic `.env` loading for local development
+- custom email-based user model
+- institution and institution membership domain models
+- institution verification models, services, selectors, admin, and migrations
+- thin internal scaffolding APIs for institution and verification case inspection
 - pytest, Ruff, and Black configuration
 
 ## What Does Not Exist Yet
 
-- production domain models
-- workflow orchestration
 - payment provider integrations
-- moderation queues
-- support routing logic
+- billing and commercial access workflows
+- institution website builder logic
+- content and moderation workflows
+- verified review workflows
+- full support system implementation
+- production staff permission matrix
 
 ## App Structure
 
@@ -34,6 +40,13 @@ Each domain app follows a consistent shape:
 - `README.md`: module responsibility and boundaries
 
 The structure is intentionally repetitive. The goal is to make boundaries visible early so later phases do not turn into ad hoc cross-module coupling.
+
+## Phase 1 Notes
+
+- `accounts` introduces the project's custom user model early to avoid a risky late auth migration.
+- `institutions` models the shared institution entity for both solo and team-based organizations.
+- `institution_verification` keeps verification state separate from commercial access and uses AI only for routing, not final approval.
+- support-linked re-upload is modeled as a verification-domain boundary that bypasses AI and routes directly to human review.
 
 ## Local Commands
 

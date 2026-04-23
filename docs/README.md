@@ -6,6 +6,7 @@ The documentation in this repository is intentionally educational. It explains n
 
 - [Overview](architecture/overview.md)
 - [Planned Modules](architecture/modules.md)
+- [Institution Verification](architecture/institution-verification.md)
 - [State Separation](architecture/state-separation.md)
 
 ## Development
@@ -17,4 +18,3 @@ The documentation in this repository is intentionally educational. It explains n
 ## Product Language
 
 - [UI Language Rules](product/ui-language.md)
-

@@ -10,13 +10,30 @@ Cross-cutting utilities that are truly shared and small in scope. This module sh
 
 Audit event recording, audit-read concerns, and explicit sensitive-data access logging boundaries. This module protects traceability and compliance-related visibility across the platform.
 
+## `accounts`
+
+Custom user model and future account-level behavior. This module exists early because institution ownership, operators, staff users, moderators, and admins all need a stable user reference.
+
 ## `institutions`
 
-Core institution concepts. This module will eventually own the shared institution entity that supports both solo and team-based organizations.
+Core institution concepts. In Phase 1 this module now owns:
+
+- the shared `Institution` entity
+- institution type (`solo` or `team_based`)
+- institution lifecycle status
+- institution memberships for owner, manager, and editor roles
 
 ## `institution_verification`
 
 Legal and institutional verification intake, evidence handling boundaries, AI pre-screening orchestration hooks, human verification workflow concepts, and correction/re-upload entry points.
+
+In Phase 1 this module now owns:
+
+- verification cases
+- verification documents
+- AI screening results
+- human decision history
+- support-linked re-upload routing that bypasses AI
 
 ## `access_billing`
 
@@ -49,4 +66,3 @@ Employee, moderator, team assignment, queue-level permissions, action-level perm
 ## `notifications`
 
 Cross-channel outbound communication such as email, SMS, and later notification preferences or delivery audit hooks.
-

@@ -2,7 +2,7 @@
 
 AVK is a production-oriented Turkish legal discovery and institution platform. The platform serves visitors who want to discover legal institutions and institutions that want to manage their visibility, verification, content, and commercial access from a shared product surface.
 
-This repository currently contains a Phase 0 bootstrap only. The goal of this phase is to establish a modular monolith foundation, documentation baseline, code quality tooling, and explicit architectural boundaries before business workflows are introduced.
+This repository currently contains the Phase 0 foundation plus a bounded Phase 1 domain layer for accounts, institutions, and institution verification. The goal is to establish real core models and services without leaking into billing, websites, content, reviews, or the full support system too early.
 
 ## Stack Direction
 
@@ -21,21 +21,26 @@ This repository currently contains a Phase 0 bootstrap only. The goal of this ph
 
 ## Current Status
 
-The repository is intentionally limited to Phase 0:
+The repository currently includes the Phase 0 foundation and the bounded Phase 1 institution and verification domain layer:
 
 - modular backend project scaffold
 - health and service-info API surface
 - audit and permission abstractions
+- custom user model
+- institution and institution membership domain models
+- institution verification domain models and services
 - frontend placeholders
 - engineering documentation
 - linting, formatting, and test tooling
 - automatic local `.env` loading and Phase 0 smoke tests
 
-Out of scope for this phase:
+Out of scope for the current repository state:
 
-- real domain workflows
-- final institution, review, billing, or moderation models
 - payment provider integration
+- billing/commercial access logic
+- institution website builder behavior
+- content and moderation workflows
+- verified review workflows
 - support chat implementation
 - production permission matrix
 

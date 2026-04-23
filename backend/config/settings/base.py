@@ -47,6 +47,7 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "apps.accounts.apps.AccountsConfig",
     "apps.common.apps.CommonConfig",
     "apps.audit_core.apps.AuditCoreConfig",
     "apps.institutions.apps.InstitutionsConfig",
@@ -118,6 +119,7 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [

@@ -1,1 +1,1 @@
-"""Institution verification APIs are deferred in Phase 0."""
+"""Institution verification internal APIs."""
